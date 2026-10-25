@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>일일 15제 훈련소 🔥</title>
+
+    <!-- 🌟 스마트폰 홈 화면 추가 시 나타날 불꽃 아이콘 🌟 -->
+    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn-icons-png.flaticon.com/512/785/785116.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://cdn-icons-png.flaticon.com/512/785/785116.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://cdn-icons-png.flaticon.com/512/785/785116.png">
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; }
@@ -60,14 +66,13 @@
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzM9hRVIOnJm7wIR1SACRfMLxZMEgQ5bXYXCSVGhBE_mEFn32t9Zv825KjIxxsuH3EP9Q/exec";
         let dailyProblems = [];
         let currentIndex = 0;
-        const TOTAL_QUESTIONS = 15; // 하루 할당량
+        const TOTAL_QUESTIONS = 15;
 
         document.addEventListener("DOMContentLoaded", () => {
             fetch(SCRIPT_URL)
                 .then(res => res.json())
                 .then(data => {
                     if(data.problems && data.problems.length > 0) {
-                        // 전체 문제 중 무작위로 15개 섞어서 추출
                         let shuffled = data.problems.sort(() => 0.5 - Math.random());
                         dailyProblems = shuffled.slice(0, TOTAL_QUESTIONS);
                         startQuiz();
@@ -98,7 +103,6 @@
             document.getElementById('btnNext').style.display = 'none';
             document.getElementById('btnFinish').style.display = 'none';
             
-            // 상단 진행률 업데이트
             const progressPercent = ((currentIndex) / TOTAL_QUESTIONS) * 100;
             document.getElementById('progressFill').style.width = `${progressPercent}%`;
             document.getElementById('progressText').innerText = `진행률: ${currentIndex + 1} / ${TOTAL_QUESTIONS}`;
@@ -123,7 +127,7 @@
         function finishQuiz() {
             document.getElementById('progressFill').style.width = `100%`;
             alert("🎉 고생하셨습니다! 오늘의 15제 훈련을 완벽하게 클리어했습니다! 🎉");
-            window.location.href = "index.html"; // 완료 후 메인 정리장으로 이동
+            window.location.href = "index.html";
         }
     </script>
 </body>
