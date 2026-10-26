@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기출 정주행 훈련소 📚</title>
+    
+    <!-- 🌟 스마트폰 홈 화면 추가 시 나타날 책 아이콘 🌟 -->
+    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn-icons-png.flaticon.com/512/3389/3389081.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://cdn-icons-png.flaticon.com/512/3389/3389081.png">
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; }
+        .header { text-align: center; margin-bottom: 20px; }
+        
+        /* 전체 진행률 바 */
+        .progress-container { margin-bottom: 15px; }
+        .progress-bar { width: 100%; background-color: #e9ecef; border-radius: 8px; height: 14px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); }
+        .progress-fill { height: 100%; background-color: #007bff; width: 0%; transition: width 0.3s ease; }
+        .progress-text { font-size: 13px; color: #495057; font-weight: bold; margin-top: 5px; display: flex; justify-content: space-between; }
+        
+        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: left; min-height: 350px; display: flex; flex-direction: column; }
+        
+        .badge-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .badge { background: #e8f0fe; color: #1a73e8; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        .cycle-badge { background: #fff3cd; color: #856404; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #ffeeba; }
+        
+        .question { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #212529; }
+        .answer-box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; color: #155724; display: none; flex-grow: 1; overflow-y: auto; margin-bottom: 20px; }
+        
+        .controls { display: flex; gap: 10px; margin-top: auto; }
+        .btn { flex: 1; padding: 15px 5px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; text-align: center; }
+        .btn-prev { background-color: #e9ecef; color: #495057; }
+        .btn-show { background-color: #6c757d; color: white; flex: 2; }
+        .btn-next { background-color: #007bff; color: white; }
+        
+        .loading { text-align: center; font-weight: bold; color: #666; margin-top: 50px; }
+        
+        /* 마크다운 테이블 스타일 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #ced4da; padding: 8px; text-align: left; }
+        th { background-color: #e9ecef; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>📚 기출 정주행 훈련소</h2>
+        <div class="progress-container">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-text">
+                <span id="progressPercent">0%</span>
+                <span id="progressCount">0 / 0 문항</span>
+            </div>
+        </div>
+        <div id="sessionText" style="font-size: 12px; color: #28a745; font-weight: bold;">오늘 학습한 문항: 0개</div>
+    </div>
+
+    <div id="loading" class="loading">🔄 구글 시트에서 전체 기출문제를 불러오는 중입니다...</div>
+
+    <div id="quizContainer" style="display: none;">
+        <div class="card">
+            <div class="badge-container">
+                <span class="badge" id="subjectBadge">과목명</span>
+                <span class="cycle-badge" id="cycleBadge">1회독 진행 중</span>
+            </div>
+            <div class="question" id="questionBox">질문 내용</div>
+            <div class="answer-box" id="answerBox">정답 내용</div>
+            
+            <div class="controls">
+                <button class="btn btn-prev" id="btnPrev" onclick="prevQuestion()">⬅️ 이전</button>
+                <button class="btn btn-show" id="btnShow" onclick="showAnswer()">💡 정답 보기</button>
+                <button class="btn btn-next" id="btnNext" onclick="nextQuestion()">다음 ➡️</button>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="index.html" style="color: #6c757d; font-size: 14px; text-decoration: none; font-weight: bold;">🏠 메인 스마트 정리장으로 돌아가기</a>
+        </div>
+    </div>
+
+    <script>
+        marked.setOptions({ breaks: true, gfm: true });
+        
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzM9hRVIOnJm7wIR1SACRfMLxZMEgQ5bXYXCSVGhBE_mEFn32t9Zv825KjIxxsuH3EP9Q/exec";
+        let allProblems = [];
+        
+        // 스마트폰 로컬 저장소에서 기존 진행 상황 불러오기
+        let currentIndex = parseInt(localStorage.getItem('dlatkd_sequential_index') || '0');
+        let readCycle = parseInt(localStorage.getItem('dlatkd_sequential_cycle') || '1');
+        let todaySessionCount = 0;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            fetch(SCRIPT_URL)
+                .then(res => res.json())
+                .then(data => {
+                    if(data.problems && data.problems.length > 0) {
+                        allProblems = data.problems;
+                        // 데이터가 줄어들었을 경우 인덱스 초과 방지
+                        if (currentIndex >= allProblems.length) currentIndex = 0; 
+                        startQuiz();
+                    } else {
+                        document.getElementById('loading').innerText = "문제가 없습니다. 시트를 확인해주세요.";
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('loading').innerText = "데이터를 불러오는 데 실패했습니다.";
+                });
+        });
+
+        function startQuiz() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('quizContainer').style.display = 'block';
+            updateUI();
+        }
+
+        function updateUI() {
+            const p = allProblems[currentIndex];
+            const total = allProblems.length;
+            
+            // 상단 진행률 업데이트
+            const progressPercent = Math.round(((currentIndex + 1) / total) * 100);
+            document.getElementById('progressFill').style.width = `${progressPercent}%`;
+            document.getElementById('progressPercent').innerText = `${progressPercent}% 달성`;
+            document.getElementById('progressCount').innerText = `${currentIndex + 1} / ${total} 문항`;
+            document.getElementById('sessionText').innerText = `🔥 오늘 정주행한 문항: ${todaySessionCount}개`;
+            
+            // 배지 업데이트
+            document.getElementById('subjectBadge').innerText = `${p.subject} (${p.year})`;
+            document.getElementById('cycleBadge').innerText = `${readCycle}회독 진행 중`;
+            
+            // 문제와 정답 세팅
+            document.getElementById('questionBox').innerHTML = marked.parse(p.question);
+            document.getElementById('answerBox').innerHTML = marked.parse(p.answer);
+            
+            // 상태 초기화
+            document.getElementById('answerBox').style.display = 'none';
+            document.getElementById('btnShow').style.display = 'block';
+        }
+
+        function showAnswer() {
+            document.getElementById('answerBox').style.display = 'block';
+            document.getElementById('btnShow').style.display = 'none';
+        }
+
+        function nextQuestion() {
+            currentIndex++;
+            todaySessionCount++;
+            
+            // 마지막 문제를 넘기면 회독수 증가 및 초기화
+            if (currentIndex >= allProblems.length) {
+                currentIndex = 0;
+                readCycle++;
+                alert(`🎉 축하합니다! 전체 ${allProblems.length}문항 ${readCycle - 1}회독을 완료하셨습니다!\n이제 ${readCycle}회독을 새롭게 시작합니다.`);
+            }
+            
+            // 하루 15문제 달성 시 알림 (한 번만 띄움)
+            if (todaySessionCount === 15) {
+                alert("🔥 오늘의 목표인 정주행 15문항을 모두 확인하셨습니다!\n원하신다면 계속해서 다음 문제로 넘어갈 수 있습니다.");
+            }
+            
+            saveProgress();
+            updateUI();
+        }
+
+        function prevQuestion() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                saveProgress();
+                updateUI();
+            } else if (readCycle > 1) {
+                // 이전 회독의 마지막 문제로 돌아가기
+                currentIndex = allProblems.length - 1;
+                readCycle--;
+                saveProgress();
+                updateUI();
+            } else {
+                alert("첫 번째 문제입니다. 더 이상 뒤로 갈 수 없습니다.");
+            }
+        }
+
+        function saveProgress() {
+            // 브라우저 저장소에 현재 인덱스와 회독수 저장
+            localStorage.setItem('dlatkd_sequential_index', currentIndex);
+            localStorage.setItem('dlatkd_sequential_cycle', readCycle);
+        }
+    </script>
+</body>
+</html>
